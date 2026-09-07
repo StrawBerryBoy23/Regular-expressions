@@ -17,10 +17,9 @@ processed_contacts = []
 for row in data:
     # --- ПУНКТ 1: Исправление ФИО ---
     # Берем первые 3 элемента, объединяем в одну строку через пробел и разбиваем обратно по пробелам.
-    # Это автоматически решит проблемы вроде "ИвановИван", "Иванов Иван Иванович" или "Иванов", "", "".
     raw_name = " ".join(row[:3]).split()
 
-    # Гарантируем, что в списке всегда ровно 3 элемента (дополняем пустыми строками, если не хватает)
+    # Гарантируем, что в списке всегда ровно 3 элемента
     while len(raw_name) < 3:
         raw_name.append("")
 
@@ -30,7 +29,7 @@ for row in data:
     # --- ПУНКТ 2: Форматирование телефона ---
     phone = row[5]
     if phone:
-        # Ищем добавочный номер (учитываем возможные варианты: доб, доб., ДОБ, с пробелом или без)
+        # Ищем добавочный номер
         ext_match = re.search(r'доб\.?\s*(\d+)', phone, re.IGNORECASE)
         ext = f" доб.{ext_match.group(1)}" if ext_match else ""
 
@@ -40,14 +39,14 @@ for row in data:
         else:
             phone_main = phone
 
-        # Оставляем в строке только цифры
-        digits = re.sub(r'\D', '', phone)
+        # ИСПРАВЛЕНИЕ: Оставляем в строке только цифры (используем phone_main, чтобы не захватить цифры добавочного номера)
+        digits = re.sub(r'\D', '', phone_main)
 
         # Нормализация российских номеров к 11 цифрам, начинающимся с 7
         if len(digits) == 11:
             if digits.startswith('8'):
                 digits = '7' + digits[1:]
-        elif len(digits) == 10 and digits.startswith('9'):  # Если номер введен как 9991234567
+        elif len(digits) == 10 and digits.startswith('9'):
             digits = '7' + digits
 
         # Если после очистки у нас корректный российский номер, форматируем его
@@ -59,30 +58,23 @@ for row in data:
 # --- ПУНКТ 3: Объединение дублирующихся записей ---
 merged_dict = {}
 for row in processed_contacts:
-    # Ключ для группировки: Фамилия и Имя в нижнем регистре (чтобы "иванов" и "Иванов" считались одним человеком)
     key = (row[0].strip().lower(), row[1].strip().lower())
 
-    # Пропускаем полностью пустые строки, если они вдруг попались
     if not key[0] and not key[1]:
         continue
 
     if key not in merged_dict:
-        # Если видим человека впервые, добавляем его запись в словарь
         merged_dict[key] = row
     else:
-        # Если человек уже есть, объединяем данные
         existing_row = merged_dict[key]
-        # Проходим по всем полям, начиная с Отчества (индекс 2) до конца строки
         for i in range(2, len(row)):
-            # Если в объединенной записи поле пустое, а в текущей строке оно заполнено, берем его
             if not existing_row[i] and row[i]:
                 existing_row[i] = row[i]
 
-# Собираем итоговый список: заголовок + уникальные значения из словаря
+# Собираем итоговый список
 final_contacts = [header] + list(merged_dict.values())
 
 # TODO 2: сохраняем получившиеся данные в другой файл
-# newline="" предотвращает появление лишних пустых строк при записи CSV в Windows
 with open("phonebook.csv", "w", encoding="utf-8", newline="") as f:
     datawriter = csv.writer(f, delimiter=',')
     datawriter.writerows(final_contacts)
