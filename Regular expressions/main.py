@@ -34,6 +34,12 @@ for row in data:
         ext_match = re.search(r'доб\.?\s*(\d+)', phone, re.IGNORECASE)
         ext = f" доб.{ext_match.group(1)}" if ext_match else ""
 
+        if ext_match:
+            # Оставляем только ту часть строки, которая идет до слова "доб"
+            phone_main = phone[:ext_match.start()]
+        else:
+            phone_main = phone
+
         # Оставляем в строке только цифры
         digits = re.sub(r'\D', '', phone)
 
